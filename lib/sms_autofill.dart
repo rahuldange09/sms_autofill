@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pin_input_text_field/pin_input_text_field.dart';
 
-export 'package:pin_input_text_field/pin_input_text_field.dart';
-
 class SmsAutoFill {
   static SmsAutoFill _singleton;
   static const MethodChannel _channel = const MethodChannel('sms_autofill');
@@ -26,6 +24,7 @@ class SmsAutoFill {
   Stream<String> get code => _code.stream;
 
   Future<String> get hint async {
+    if (!Platform.isAndroid) return "";
     final String version = await _channel.invokeMethod('requestPhoneHint');
     return version;
   }
@@ -58,7 +57,8 @@ class PinFieldAutoFill extends StatefulWidget {
     Key key,
     this.keyboardType = const TextInputType.numberWithOptions(),
     this.focusNode,
-    this.decoration = const UnderlineDecoration(textStyle: TextStyle(color: Colors.black)),
+    this.decoration =
+        const UnderlineDecoration(textStyle: TextStyle(color: Colors.black)),
     this.onCodeSubmitted,
     this.onCodeChanged,
     this.currentCode,
@@ -105,7 +105,8 @@ class _PinFieldAutoFillState extends State<PinFieldAutoFill> with CodeAutoFill {
 
   @override
   void didUpdateWidget(PinFieldAutoFill oldWidget) {
-    if (widget.currentCode != oldWidget.currentCode || widget.currentCode != code) {
+    if (widget.currentCode != oldWidget.currentCode ||
+        widget.currentCode != code) {
       code = widget.currentCode;
       codeUpdated();
     }
@@ -114,9 +115,10 @@ class _PinFieldAutoFillState extends State<PinFieldAutoFill> with CodeAutoFill {
 
   @override
   void codeUpdated() {
-    controller.value = TextEditingValue(text: code ?? '');
-    if (widget.onCodeChanged != null) {
-      widget.onCodeChanged(code ?? '');
+    // if (code == null && controller.text.isNotEmpty) return;
+    if (code != null) {
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+      controller.value = TextEditingValue(text: code ?? '');
     }
   }
 
@@ -156,14 +158,22 @@ class _PhoneFieldHintState extends State<PhoneFieldHint> {
 
   @override
   void initState() {
-    _controller = widget.controller ?? widget.child?.controller ?? TextEditingController(text: '');
+    _controller = widget.controller ??
+        widget.child?.controller ??
+        TextEditingController(text: '');
     _focusNode = widget.focusNode ?? widget.child?.focusNode ?? FocusNode();
     _focusNode.addListener(() async {
-      if (_focusNode.hasFocus && !_hintShown) {
-        _hintShown = true;
-        scheduleMicrotask(() {
-          _askPhoneHint();
-        });
+      if (Platform.isAndroid) {
+        if (_focusNode.hasFocus &&
+            !_hintShown &&
+            _controller.text.trim().isEmpty) {
+          _hintShown = true;
+          _focusNode.consumeKeyboardToken();
+          await _askPhoneHint();
+        }
+        if (!_focusNode.hasFocus && _hintShown) {
+          _hintShown = false;
+        }
       }
     });
     super.initState();
@@ -178,7 +188,7 @@ class _PhoneFieldHintState extends State<PhoneFieldHint> {
           decoration: InputDecoration(
             suffixIcon: Platform.isAndroid
                 ? IconButton(
-                    icon: Icon(Icons.phonelink_setup),
+                    icon: const Icon(Icons.phonelink_setup),
                     onPressed: () async {
                       await _askPhoneHint();
                     },
@@ -198,8 +208,11 @@ class _PhoneFieldHintState extends State<PhoneFieldHint> {
   }
 
   Future<void> _askPhoneHint() async {
+    String currentControllerValue = _controller.value?.text?.trim() ?? "";
     String hint = await _autoFill.hint;
-    _controller.value = TextEditingValue(text: hint ?? '');
+    String hintNumber = hint.isNotEmpty ? hint.replaceFirst("+91", "") : null;
+    _controller.value =
+        TextEditingValue(text: hintNumber ?? currentControllerValue);
   }
 }
 
@@ -211,13 +224,11 @@ class TextFieldPinAutoFill extends StatefulWidget {
   final Function(String) onCodeSubmitted;
   final Function(String) onCodeChanged;
   final InputDecoration decoration;
-  final bool obscureText;
   final TextStyle style;
 
   const TextFieldPinAutoFill({
     Key key,
     this.focusNode,
-    this.obscureText = false,
     this.onCodeSubmitted,
     this.style,
     this.onCodeChanged,
@@ -243,7 +254,6 @@ mixin CodeAutoFill {
       this.code = code;
       codeUpdated();
     });
-    _autoFill.listenForCode;
   }
 
   void cancel() {
@@ -253,7 +263,8 @@ mixin CodeAutoFill {
   void codeUpdated();
 }
 
-class _TextFieldPinAutoFillState extends State<TextFieldPinAutoFill> with CodeAutoFill {
+class _TextFieldPinAutoFillState extends State<TextFieldPinAutoFill>
+    with CodeAutoFill {
   final TextEditingController _textController = TextEditingController(text: '');
 
   @override
@@ -268,7 +279,6 @@ class _TextFieldPinAutoFillState extends State<TextFieldPinAutoFill> with CodeAu
       onChanged: widget.onCodeChanged,
       keyboardType: TextInputType.numberWithOptions(),
       controller: _textController,
-      obscureText: widget.obscureText,
     );
   }
 
@@ -283,14 +293,12 @@ class _TextFieldPinAutoFillState extends State<TextFieldPinAutoFill> with CodeAu
   @override
   void codeUpdated() {
     _textController.value = TextEditingValue(text: code ?? '');
-    if (widget.onCodeChanged != null) {
-      widget.onCodeChanged(code ?? '');
-    }
   }
 
   @override
   void didUpdateWidget(TextFieldPinAutoFill oldWidget) {
-    if (widget.currentCode != oldWidget.currentCode || widget.currentCode != _getCode()) {
+    if (widget.currentCode != oldWidget.currentCode ||
+        widget.currentCode != _getCode()) {
       code = widget.currentCode;
       codeUpdated();
     }

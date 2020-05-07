@@ -29,6 +29,7 @@ import java.lang.ref.WeakReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.flutter.Log;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -51,23 +52,26 @@ public class SmsAutoFillPlugin implements MethodCallHandler {
     private final PluginRegistry.Registrar registrar;
 
 
-    private SmsAutoFillPlugin(MethodChannel channel, Registrar registrar) {
+	private SmsAutoFillPlugin(MethodChannel channel, Registrar registrar) {
         this.activity = registrar.activity();
         this.channel = channel;
         this.registrar = registrar;
         registrar.addActivityResultListener(new PluginRegistry.ActivityResultListener() {
-
             @Override
             public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-                if (requestCode == PHONE_HINT_REQUEST) {
-                    if (resultCode == Activity.RESULT_OK) {
-                        Credential credential = data.getParcelableExtra(Credential.EXTRA_KEY);
-                        final String phoneNumber = credential.getId();
-                        pendingHintResult.success(phoneNumber);
-                    } else {
-                        pendingHintResult.success(null);
+                try {
+                    if (requestCode == PHONE_HINT_REQUEST) {
+                        if (resultCode == Activity.RESULT_OK) {
+                            Credential credential = data.getParcelableExtra(Credential.EXTRA_KEY);
+                            final String phoneNumber = credential.getId();
+                            pendingHintResult.success(phoneNumber);
+                        } else {
+                            pendingHintResult.success("");
+                        }
+                        return true;
                     }
-                    return true;
+                }catch(IllegalStateException ex){
+                    Log.e("IllegalStateException", ex.getMessage());
                 }
                 return false;
             }

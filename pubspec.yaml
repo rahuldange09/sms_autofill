@@ -8,7 +8,7 @@ environment:
   sdk: ">=2.0.0 <3.0.0"
 
 dependencies:
-  pin_input_text_field: ^3.0.1
+  # pin_input_text_field: ^3.0.1
     #git:
     #  url: https://github.com/TinoGuo/pin_input_text_field
     #  ref: dev
