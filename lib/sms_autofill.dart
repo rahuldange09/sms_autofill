@@ -52,6 +52,7 @@ class PinFieldAutoFill extends StatefulWidget {
   final PinDecoration decoration;
   final FocusNode focusNode;
   final TextInputType keyboardType;
+  final TextEditingController controller;
 
   const PinFieldAutoFill({
     Key key,
@@ -64,6 +65,7 @@ class PinFieldAutoFill extends StatefulWidget {
     this.currentCode,
     this.autofocus = false,
     this.codeLength = 6,
+    this.controller,
   }) : super(key: key);
 
   @override
@@ -76,21 +78,8 @@ class _PinFieldAutoFillState extends State<PinFieldAutoFill> with CodeAutoFill {
   TextEditingController controller;
 
   @override
-  Widget build(BuildContext context) {
-    return PinInputTextField(
-      pinLength: widget.codeLength,
-      decoration: widget.decoration,
-      focusNode: widget.focusNode,
-      keyboardType: widget.keyboardType,
-      autoFocus: widget.autofocus,
-      controller: controller,
-      onSubmit: widget.onCodeSubmitted,
-    );
-  }
-
-  @override
   void initState() {
-    controller = TextEditingController(text: '');
+    controller = widget.controller ?? TextEditingController(text: '');
     code = widget.currentCode;
     codeUpdated();
     controller.addListener(() {
@@ -120,6 +109,19 @@ class _PinFieldAutoFillState extends State<PinFieldAutoFill> with CodeAutoFill {
       SystemChannels.textInput.invokeMethod('TextInput.hide');
       controller.value = TextEditingValue(text: code ?? '');
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PinInputTextField(
+      pinLength: widget.codeLength,
+      decoration: widget.decoration,
+      focusNode: widget.focusNode,
+      keyboardType: widget.keyboardType,
+      autoFocus: widget.autofocus,
+      controller: controller,
+      onSubmit: widget.onCodeSubmitted,
+    );
   }
 
   @override
