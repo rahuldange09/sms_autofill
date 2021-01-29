@@ -210,11 +210,19 @@ class _PhoneFieldHintState extends State<PhoneFieldHint> {
   }
 
   Future<void> _askPhoneHint() async {
-    String currentControllerValue = _controller.value?.text?.trim() ?? "";
+    String controllerCurrentValue = _controller.value?.text?.trim() ?? "";
     String hint = await _autoFill.hint;
     String hintNumber = hint.isNotEmpty ? hint.replaceFirst("+91", "") : null;
     _controller.value =
-        TextEditingValue(text: hintNumber ?? currentControllerValue);
+        TextEditingValue(text: hintNumber ?? controllerCurrentValue);
+    if (hintNumber == null) {
+      // Opens keyboard again and focuses
+      FocusScope.of(context).requestFocus(FocusNode());
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _hintShown = true;
+        FocusScope.of(context).requestFocus(_focusNode);
+      });
+    }
   }
 }
 
